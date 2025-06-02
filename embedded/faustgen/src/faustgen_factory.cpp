@@ -1,6 +1,6 @@
 /************************************************************************
  FAUST Architecture File
- Copyright (C) 2012-2023 GRAME, Centre National de Creation Musicale
+ Copyright (C) 2012-2024 GRAME, Centre National de Creation Musicale
  ---------------------------------------------------------------------
  This Architecture section is free software; you can redistribute it
  and/or modify it under the terms of the GNU General Public License
@@ -31,8 +31,6 @@
 
 #include "faustgen_factory.h"
 #include "faustgen~.h"
-
-#define LLVM_DSP
 
 #include <faust/dsp/libfaust.h>
 #include <faust/dsp/poly-dsp.h>
@@ -97,9 +95,14 @@ static string getTarget()
 
 // Returns the serial number as a CFString.
 // It is the caller's responsibility to release the returned CFString when done with it.
+
+#if (MAC_OS_X_VERSION_MAX_ALLOWED < 120000) // Before macOS 12 Monterey
+    #define kIOMainPortDefault kIOMasterPortDefault
+#endif
+
 static string getSerialNumber()
 {
-    io_service_t platformExpert = IOServiceGetMatchingService(kIOMasterPortDefault, IOServiceMatching("IOPlatformExpertDevice"));
+    io_service_t platformExpert = IOServiceGetMatchingService(kIOMainPortDefault, IOServiceMatching("IOPlatformExpertDevice"));
     
     if (platformExpert) {
         CFTypeRef serialNumberAsCFString =
@@ -324,12 +327,8 @@ dsp_factory* faustgen_factory::create_factory_from_sourcecode()
     for (const auto& it : fCompileOptions) {
         argv[i++] = (char*)it.c_str();
     }
-    argv[fCompileOptions.size()] = 0;  // NULL terminated argv
-    
-    // Generate SVG file
-    if (!generateAuxFilesFromString(name_app, *fSourceCode, fCompileOptions.size(), argv, error_msg)) {
-        post("Generate SVG error : %s", error_msg.c_str());
-    }
+    argv[fCompileOptions.size()] = nullptr;  // NULL terminated argv
+  
 #ifdef INTERP_BACKEND
     dsp_factory* factory = createInterpreterDSPFactoryFromString(name_app, *fSourceCode, fCompileOptions.size(), argv, error_msg);
 #else
@@ -348,10 +347,7 @@ dsp_factory* faustgen_factory::create_factory_from_sourcecode()
         */
         return factory;
     } else {
-        // Update all instances
-        for (const auto& it : fInstances) {
-            //it->hilight_on();
-        }
+        // Hilight the error in the patch window
         if (fInstances.begin() != fInstances.end()) {
             (*fInstances.begin())->hilight_error(error_msg);
         }
@@ -561,7 +557,7 @@ void faustgen_factory::getfromdictionary(t_dictionary* d)
         post("Cannot read \"version\" key, so ignore bitcode, force recompilation and use default compileoptions");
         goto read_sourcecode;
     } else if (strcmp(faustgen_version, FAUSTGEN_VERSION) != 0) {
-        post("Older version of faustgen~ (%s versus %s), so ignore bitcode, force recompilation and use default compileoptions", FAUSTGEN_VERSION, faustgen_version);
+        post("Older version of faustgen~/mc.faustgen~ (%s versus %s), so ignore bitcode, force recompilation and use default compileoptions", FAUSTGEN_VERSION, faustgen_version);
         goto read_sourcecode;
     }
     
@@ -822,11 +818,6 @@ void faustgen_factory::update_sourcecode(int size, char* source_code)
     // Recompile only if text has been changed
     if (strcmp(source_code, *fSourceCode) != 0) {
         
-        // Update all instances
-        for (const auto& it : fInstances) {
-            //it->hilight_off();
-        }
-        
         // Delete the existing Faust module
         free_dsp_factory();
         
@@ -841,9 +832,25 @@ void faustgen_factory::update_sourcecode(int size, char* source_code)
         sysmem_copyptr(source_code, *fSourceCode, size);
         fSourceCodeSize = size;
         
+        // Prepare compile options
+        string error_msg;
+        std::vector<const char*> argv;
+        // Add user-defined compile options
+        for (const auto& opt : fCompileOptions) {
+            argv.push_back(opt.c_str());
+        }
+        // Append fixed options
+        argv.insert(argv.end(), {"-lang", "codebox", "-o", "string", nullptr});  // Null-terminate the array
+        
+        // Compile codebox
+        string codebox = generateAuxFilesFromString2("Codebox", *fSourceCode, argv.size() - 1, argv.data(), error_msg);
+        if (codebox == "") {
+            post("Generate codebox error : %s", error_msg.c_str());
+        }
+        
         // Update all instances
         for (const auto& it : fInstances) {
-            it->update_sourcecode();
+            it->update_sourcecode(codebox);
         }
         
     } else {
@@ -888,7 +895,7 @@ void faustgen_factory::compile_file(t_filehandle file_handle, short path, char* 
     // Free the memory allocated for fBitCode
     free_bitcode();
     
-    // Always works here since 'is_new_file' returned true
+    // Always works here since 'is_new' returned true
     sysfile_readtextfile(file_handle, fSourceCode, 0, (t_sysfile_text_flags)(TEXT_LB_UNIX | TEXT_NULL_TERMINATE));
     sysfile_setpos(file_handle, SYSFILE_FROMSTART, 0);
     

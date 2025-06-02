@@ -46,12 +46,13 @@ interval interval_algebra::Inv(const interval& x)
     // we can take the max number to be an integer bound
     // and this one will give a finite precision, unlike a floating-point infinity
     if (std::isinf(v)) {
-        sign == -1 ? v = INT_MAX : v = INT_MIN;
+        v = (sign == -1) ? INT_MAX : INT_MIN;
     }
 
-    int precision = exactPrecisionUnary(inv, v, sign * pow(2, x.lsb()));
+    int precision = exactPrecisionUnary(inv, v, sign * std::pow(2, x.lsb()));
     if ((precision == INT_MIN) || taylor_lsb) {
-        precision = floor(x.lsb() - 2 * log2(abs(v)));  // 1/(x+u) - 1/x = -u/x^2 + o(u)
+        precision =
+            std::floor(x.lsb() - 2 * std::log2(std::abs(v)));  // 1/(x+u) - 1/x = -u/x^2 + o(u)
     }
 
     // precision = std::max(precision, -31);

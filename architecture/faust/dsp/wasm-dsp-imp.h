@@ -1,6 +1,6 @@
 /************************** BEGIN wasm-dsp-imp.h **************************
 FAUST Architecture File
-Copyright (C) 2003-2022 GRAME, Centre National de Creation Musicale
+Copyright (C) 2003-2025 GRAME, Centre National de Creation Musicale
 ---------------------------------------------------------------------
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU Lesser General Public License as published by
@@ -27,6 +27,7 @@ architecture section is not modified.
 
 #include <string>
 #include <vector>
+#include <iostream>
 #include <assert.h>
 
 #include "faust/dsp/dsp.h"
@@ -36,7 +37,7 @@ architecture section is not modified.
 
 // Generic wasm_dsp_factory class that keeps the JSON decoder.
 
-class LIFAUST_API wasm_dsp_factory_imp : public dsp_factory {
+class LIBFAUST_API wasm_dsp_factory_imp : public dsp_factory {
     
     public:
     
@@ -60,16 +61,18 @@ class LIFAUST_API wasm_dsp_factory_imp : public dsp_factory {
     
         std::vector<std::string> getIncludePathnames() { return fDecoder->getIncludePathnames(); }
     
-        virtual dsp* createDSPInstance() {}
+        virtual ::dsp* createDSPInstance() { return nullptr; }
     
         virtual void setMemoryManager(dsp_memory_manager* manager) {}
     
         virtual dsp_memory_manager* getMemoryManager() { return nullptr; }
+    
+        virtual std::vector<std::string> getWarningMessages() {return {}; };
 };
 
 // Generic wasm_dsp class that creates and use the JSON decoder, and manage DSP and audio memory.
 
-class LIFAUST_API wasm_dsp_imp : public dsp {
+class LIBFAUST_API wasm_dsp_imp : public ::dsp {
     
     protected:
     
@@ -91,12 +94,8 @@ class LIFAUST_API wasm_dsp_imp : public dsp {
             
             if (!fFactory->fDecoder) {
                 std::string json = std::string(fMemory);
-                std::cout << "JSON " << json <<  std::endl;
                 fFactory->fDecoder = createJSONUIDecoder(json);
             }
-            
-            std::cout << "Libfaust version: " << fFactory->fDecoder->getLibVersion() << std::endl;
-            std::cout << "Compilation options: " << fFactory->fDecoder->getCompileOptions() << std::endl;
             
             int ptr_size = sizeof(FAUSTFLOAT*);
             int sample_size = sizeof(FAUSTFLOAT);
@@ -150,10 +149,10 @@ class LIFAUST_API wasm_dsp_imp : public dsp {
         wasm_dsp_imp(wasm_dsp_factory_imp* factory, char* memory = nullptr):
         fFactory(factory),
         fMemory(memory),
-        fInputs(nullptr),
-        fOutputs(nullptr),
         fWasmInputs(0),
-        fWasmOutputs(0)
+        fWasmOutputs(0),
+        fInputs(nullptr),
+        fOutputs(nullptr)
         {}
     
         virtual ~wasm_dsp_imp()

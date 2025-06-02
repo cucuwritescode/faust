@@ -11,6 +11,7 @@
 #pragma once
 
 #include <cassert>
+#include <cstdint>
 #include <cstdio>
 #include <iostream>
 #include <map>
@@ -43,8 +44,8 @@ class digraph {
 
        public:
 #if 0
-        internalgraph() { std::cout << "create internalgraph " << this << std::endl; }
-        ~internalgraph() { std::cout << "delete internalgraph " << this << std::endl; }
+        internalgraph() { std::cout << "create internalgraph " << this << '\n'; }
+        ~internalgraph() { std::cout << "delete internalgraph " << this << '\n'; }
 #endif
         //----------------------------------------------------------------------
         // Methods used to build the graph
