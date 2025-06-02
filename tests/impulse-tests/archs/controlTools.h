@@ -9,7 +9,8 @@
 #include "faust/gui/SoundUI.h"
 
 #include "faust/dsp/llvm-dsp.h"
-#include "faust/dsp/libfaust.h"
+// Use local version instead of installed one
+#include "../../../compiler/generator/libfaust.h"
 
 #ifdef HAS_FX
 #include "faust/dsp/fixed-point.h"
@@ -189,7 +190,6 @@ struct malloc_memory_manager_check : public dsp_memory_manager {
     }
 };
 
-
 struct malloc_memory_manager_check_dsp : public malloc_memory_manager {
     
     int fDSPSize = 0;
@@ -235,7 +235,6 @@ static inline FAUSTFLOAT normalize(FAUSTFLOAT f)
     }
     return (fabs(f) < FAUSTFLOAT(0.000001) ? FAUSTFLOAT(0.0) : f);
 }
-
 
 //---------------------------------------------------------------------
 // Soundfile: has to be global to be share across multiple instances

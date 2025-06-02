@@ -118,8 +118,9 @@ void interval_algebra::testMul()
     (double)INT_MAX, 0), specialmultint, &interval_algebra::Mul); analyzeBinaryMethod(10, 2000000,
     "mul", interval((double)2*INT_MAX/3, (double)INT_MAX, 0), interval(0, 10, 0), specialmultint,
     &interval_algebra::Mul);*/
-    check("Test integer Mult", Mul(interval(pow(2, 30), pow(2, 30) + 2, 2), interval(1, 2, 0)),
-          interval((double)INT_MIN, pow(2, 30) + 2, 0));
+    check("Test integer Mult",
+          Mul(interval(std::pow(2, 30), std::pow(2, 30) + 2, 2), interval(1, 2, 0)),
+          interval((double)INT_MIN, std::pow(2, 30) + 2, 0));
     // analyzeBinaryMethod(10, 2000, "mul", interval((double)INT_MAX-1, (double)INT_MAX, 0),
     // interval((double)INT_MAX-1, (double)INT_MAX, 0), specialmultint, &interval_algebra::Mul);
 }

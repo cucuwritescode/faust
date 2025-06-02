@@ -54,8 +54,8 @@ architecture section is not modified.
 #define kLegatoVoice   -3
 #define kNoVoice       -4
 
-#define VOICE_STOP_LEVEL  0.0005    // -70 db
-#define MIX_BUFFER_SIZE   4096
+#define VOICE_STOP_LEVEL 0.00003162  // -90 db
+#define MIX_BUFFER_SIZE  4096
 
 /**
  * Allows to control zones in a grouped manner.
@@ -170,9 +170,7 @@ struct dsp_voice : public MapUI, public decorator_dsp {
     int fNextNote;                      // In kLegatoVoice state, next note to play
     int fNextVel;                       // In kLegatoVoice state, next velocity to play
     int fDate;                          // KeyOn date
-    int fRelease;                       // Current number of samples used in release mode to detect end of note
     FAUSTFLOAT fLevel;                  // Last audio block level
-    double fReleaseLengthSec;           // Maximum release length in seconds (estimated time to silence after note release)
     std::vector<std::string> fGatePath; // Paths of 'gate' control
     std::vector<std::string> fGainPath; // Paths of 'gain/vel|velocity' control
     std::vector<std::string> fFreqPath; // Paths of 'freq/key' control
@@ -182,7 +180,7 @@ struct dsp_voice : public MapUI, public decorator_dsp {
     FAUSTFLOAT** fInputsSlice;
     FAUSTFLOAT** fOutputsSlice;
  
-    dsp_voice(dsp* dsp):decorator_dsp(dsp)
+    dsp_voice(::dsp* dsp):decorator_dsp(dsp)
     {
         // Default conversion functions
         fVelFun = [](int velocity) { return double(velocity)/127.0; };
@@ -191,8 +189,7 @@ struct dsp_voice : public MapUI, public decorator_dsp {
         fCurNote = kFreeVoice;
         fNextNote = fNextVel = -1;
         fLevel = FAUSTFLOAT(0);
-        fDate = fRelease = 0;
-        fReleaseLengthSec = 0.5;  // A half second is a reasonable default maximum release length.
+        fDate = 0;
         extractPaths(fGatePath, fFreqPath, fGainPath);
     }
     virtual ~dsp_voice()
@@ -269,7 +266,7 @@ struct dsp_voice : public MapUI, public decorator_dsp {
         fCurNote = kFreeVoice;
         fNextNote = fNextVel = -1;
         fLevel = FAUSTFLOAT(0);
-        fDate = fRelease = 0;
+        fDate = 0;
     }
     
     // Keep 'pitch' and 'velocity' to fadeOut the current voice and start next one in the next buffer
@@ -311,15 +308,8 @@ struct dsp_voice : public MapUI, public decorator_dsp {
             fCurNote = kFreeVoice;
         } else {
             // Release voice
-            fRelease = fReleaseLengthSec * fDSP->getSampleRate();
             fCurNote = kReleaseVoice;
         }
-    }
- 
-    // Change the voice release
-    void setReleaseLength(double sec)
-    {
-        fReleaseLengthSec = sec;
     }
 
 };
@@ -333,7 +323,7 @@ struct dsp_voice_group {
     GroupUI fGroups;
 
     std::vector<dsp_voice*> fVoiceTable; // Individual voices
-    dsp* fVoiceGroup;                    // Voices group to be used for GUI grouped control
+    ::dsp* fVoiceGroup;                  // Voices group to be used for GUI grouped control
 
     FAUSTFLOAT fPanic;  // Panic button value
 
@@ -398,7 +388,11 @@ struct dsp_voice_group {
             ui_interface->closeBox();
 
             // If not grouped, also add individual voices UI
+#ifdef DAISY_NO_RTTI
+            if (!fGroupControl || ui_interface->isSoundUI()) {
+#else
             if (!fGroupControl || dynamic_cast<SoundUIInterface*>(ui_interface)) {
+#endif
                 for (size_t i = 0; i < fVoiceTable.size(); i++) {
                     char buffer[32];
                     snprintf(buffer, 32, ((fVoiceTable.size() < 8) ? "Voice%ld" : "V%ld"), long(i+1));
@@ -438,7 +432,7 @@ class dsp_poly : public decorator_dsp, public midi, public JSONControl {
     public:
     
     #ifdef EMCC
-        dsp_poly(dsp* dsp):decorator_dsp(dsp), fMIDIUI(&fMidiHandler)
+        dsp_poly(::dsp* dsp):decorator_dsp(dsp), fMIDIUI(&fMidiHandler)
         {
             JSONUI jsonui(getNumInputs(), getNumOutputs());
             buildUserInterface(&jsonui);
@@ -447,7 +441,7 @@ class dsp_poly : public decorator_dsp, public midi, public JSONControl {
             buildUserInterface(&fMIDIUI);
         }
     #else
-        dsp_poly(dsp* dsp):decorator_dsp(dsp)
+        dsp_poly(::dsp* dsp):decorator_dsp(dsp)
         {}
     #endif
     
@@ -524,11 +518,7 @@ class dsp_poly : public decorator_dsp, public midi, public JSONControl {
         {
             midi::progChange(channel, pgm);
         }
-    
-        // Change the voice release
-        virtual void setReleaseLength(double seconds)
-        {}
-    
+     
 };
 
 /**
@@ -559,19 +549,24 @@ class mydsp_poly : public dsp_voice_group, public dsp_poly {
             }
         }
     
-        // Mix the audio from the mix buffer to the output buffer, and also calculate the maximum level on the buffer
         FAUSTFLOAT mixCheckVoice(int count, FAUSTFLOAT** mixBuffer, FAUSTFLOAT** outBuffer)
         {
-            FAUSTFLOAT level = 0;
-            for (int chan = 0; chan < getNumOutputs(); chan++) {
+            FAUSTFLOAT sumSquares = 0;
+            int numOutputs = getNumOutputs();
+            
+            for (int chan = 0; chan < numOutputs; chan++) {
                 FAUSTFLOAT* mixChannel = mixBuffer[chan];
                 FAUSTFLOAT* outChannel = outBuffer[chan];
                 for (int frame = 0; frame < count; frame++) {
-                    level = std::max<FAUSTFLOAT>(level, (FAUSTFLOAT)fabs(mixChannel[frame]));
-                    outChannel[frame] += mixChannel[frame];
+                    FAUSTFLOAT sample = mixChannel[frame];
+                    sumSquares += sample * sample;
+                    outChannel[frame] += sample;
                 }
             }
-            return level;
+            
+            // RMS is sqrt of mean of sum of squares across all samples in all channels
+            FAUSTFLOAT meanSquare = sumSquares / (count * numOutputs);
+            return std::sqrt(meanSquare);
         }
     
         // Mix the audio from the mix buffer to the output buffer
@@ -609,7 +604,9 @@ class mydsp_poly : public dsp_voice_group, public dsp_poly {
             int oldest_date_playing = INT_MAX;
             
             for (size_t i = 0; i < fVoiceTable.size(); i++) {
-                if (fVoiceTable[i]->fCurNote == pitch) {
+                int curNote = fVoiceTable[i]->fCurNote;
+                int nextNote = fVoiceTable[i]->fNextNote;
+                if ((curNote == pitch) || ((curNote == kLegatoVoice) && (nextNote == pitch))) {
                     // Keeps oldest playing voice
                     if (fVoiceTable[i]->fDate < oldest_date_playing) {
                         oldest_date_playing = fVoiceTable[i]->fDate;
@@ -635,7 +632,7 @@ class mydsp_poly : public dsp_voice_group, public dsp_poly {
             // Looks for the first available voice
             for (size_t i = 0; i < fVoiceTable.size(); i++) {
                 if (fVoiceTable[i]->fCurNote == kFreeVoice) {
-                    return allocVoice(i, kActiveVoice);
+                    return allocVoice(int(i), kActiveVoice);
                 }
             }
 
@@ -644,7 +641,7 @@ class mydsp_poly : public dsp_voice_group, public dsp_poly {
             int voice_playing = kNoVoice;
             int oldest_date_release = INT_MAX;
             int oldest_date_playing = INT_MAX;
-
+        
             // Scan all voices
             for (size_t i = 0; i < fVoiceTable.size(); i++) {
                 if (fVoiceTable[i]->fCurNote == kReleaseVoice) {
@@ -662,6 +659,7 @@ class mydsp_poly : public dsp_voice_group, public dsp_poly {
                 }
             }
         
+            
             // Then decide which one to steal
             if (oldest_date_release != INT_MAX) {
                 fprintf(stderr, "Steal release voice : voice_date = %d cur_date = %d voice = %d \n",
@@ -714,7 +712,7 @@ class mydsp_poly : public dsp_voice_group, public dsp_poly {
          *                If false, all voices can be individually controlled.
          *
          */
-        mydsp_poly(dsp* dsp,
+        mydsp_poly(::dsp* dsp,
                    int nvoices,
                    bool control = false,
                    bool group = true)
@@ -757,10 +755,17 @@ class mydsp_poly : public dsp_voice_group, public dsp_poly {
         void buildUserInterface(UI* ui_interface)
         {
             // MidiUI ui_interface contains the midi_handler connected to the MIDI driver
+            #ifdef DAISY_NO_RTTI
+            if (ui_interface->isMidiInterface()) {
+                fMidiHandler = reinterpret_cast<midi_interface*>(ui_interface);
+                fMidiHandler->addMidiIn(this);
+            }
+            #else
             if (dynamic_cast<midi_interface*>(ui_interface)) {
                 fMidiHandler = dynamic_cast<midi_interface*>(ui_interface);
                 fMidiHandler->addMidiIn(this);
             }
+            #endif
             dsp_voice_group::buildUserInterface(ui_interface);
         }
 
@@ -843,11 +848,7 @@ class mydsp_poly : public dsp_voice_group, public dsp_poly {
                         voice->compute(count, inputs, fMixBuffer);
                         // Mix it in result
                         voice->fLevel = mixCheckVoice(count, fMixBuffer, fOutBuffer);
-                        // Check the level to possibly set the voice in kFreeVoice again
-                        voice->fRelease -= count;
-                        if ((voice->fCurNote == kReleaseVoice)
-                            && (voice->fRelease < 0)
-                            && (voice->fLevel < VOICE_STOP_LEVEL)) {
+                        if ((voice->fCurNote == kReleaseVoice) && (voice->fLevel < VOICE_STOP_LEVEL)) {
                             voice->fCurNote = kFreeVoice;
                         }
                     }
@@ -926,14 +927,6 @@ class mydsp_poly : public dsp_voice_group, public dsp_poly {
             }
         }
 
-        // Change the voice release
-        void setReleaseLength(double seconds)
-        {
-            for (size_t i = 0; i < fVoiceTable.size(); i++) {
-                fVoiceTable[i]->setReleaseLength(seconds);
-            }
-        }
-
 };
 
 /**
@@ -948,7 +941,7 @@ class dsp_poly_effect : public dsp_poly {
         
     public:
         
-        dsp_poly_effect(dsp_poly* voice, dsp* combined)
+        dsp_poly_effect(dsp_poly* voice, ::dsp* combined)
         :dsp_poly(combined), fPolyDSP(voice)
         {}
         
@@ -990,13 +983,7 @@ class dsp_poly_effect : public dsp_poly {
         {
             fPolyDSP->progChange(channel, pgm);
         }
-    
-        // Change the voice release
-        void setReleaseLength(double sec)
-        {
-            fPolyDSP->setReleaseLength(sec);
-        }
-    
+      
 };
 
 /**
@@ -1007,7 +994,7 @@ struct dsp_poly_factory : public dsp_factory {
     dsp_factory* fProcessFactory;
     dsp_factory* fEffectFactory;
     
-    dsp* adaptDSP(dsp* dsp, bool is_double)
+    ::dsp* adaptDSP(::dsp* dsp, bool is_double)
     {
         return (is_double) ? new dsp_sample_adapter<double, float>(dsp) : dsp;
     }
@@ -1062,7 +1049,7 @@ struct dsp_poly_factory : public dsp_factory {
     {
         if (nvoices == -1) {
             // Get 'nvoices' from the metadata declaration
-            dsp* dsp = fProcessFactory->createDSPInstance();
+            ::dsp* dsp = fProcessFactory->createDSPInstance();
             bool midi_sync = false;
             bool midi = false;
             MidiMeta::analyse(dsp, midi, midi_sync, nvoices);
@@ -1078,7 +1065,7 @@ struct dsp_poly_factory : public dsp_factory {
     }
 
     /* Create a new DSP instance, to be deleted with C++ 'delete' */
-    dsp* createDSPInstance()
+    ::dsp* createDSPInstance()
     {
         return fProcessFactory->createDSPInstance();
     }

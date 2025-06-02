@@ -253,7 +253,7 @@ static Tree real_a2sb(Tree exp)
                 modified = true;
             }
         }
-        Tree r = (modified) ? CTree::make(exp->node(), B) : exp;
+        Tree r = (modified) ? tree(exp->node(), B) : exp;
         return r;
     }
 }
@@ -678,12 +678,11 @@ static Tree realeval(Tree exp, Tree visited, Tree localValEnv)
         faustassert(isList(var));
 
         // Evaluate the label and the modulation circuit to be used
-        Tree   ulabel = hd(var);
-        string s1     = evalLabel(tree2str(ulabel), visited, localValEnv);
-        Tree   elabel = tree(s1.c_str());
-
-        Tree mcircuit = tl(var);
-        Tree emcircuit =
+        Tree   ulabel   = hd(var);
+        string s1       = evalLabel(tree2str(ulabel), visited, localValEnv);
+        Tree   elabel   = target2path(s1);
+        Tree   mcircuit = tl(var);
+        Tree   emcircuit =
             isNil(mcircuit) ? boxPrim2(sigMul) : a2sb(eval(mcircuit, visited, localValEnv));
 
         // Check the number of inputs (<= 2) and outputs (1) of the modulation circuit
@@ -715,15 +714,12 @@ static Tree realeval(Tree exp, Tree visited, Tree localValEnv)
             slot = gGlobal->nil;
         }
 
-        // Create a path from the evaluated label
-        Tree mpath = superNormalizePath(cons(elabel, gGlobal->nil));
-
         // Fully evaluate the body we are going to rewrite
         Tree ebody = a2sb(eval(body, visited, localValEnv));
 
         // rewrite the body
-        BoxModulationImplanter bm(mpath, slot, inum, emcircuit);
-        // bm.trace(true);
+        BoxModulationImplanter bm(elabel, slot, inum, emcircuit);
+        bm.trace(false);
 
         Tree mbody = bm.self(ebody);
 
@@ -1234,8 +1230,8 @@ static Tree applyList(Tree fun, Tree larg)
                 // return eval(body, nil, localValEnv);
                 return applyList(eval(body, gGlobal->nil, localValEnv), tl(larg));
             } else {
-                cerr << "wrong result from pattern matching (not a closure) : " << boxpp(result)
-                     << endl;
+                cerr << "ERROR : wrong result from pattern matching (not a closure) : "
+                     << boxpp(result) << endl;
                 return boxError();
             }
         }
