@@ -41,6 +41,31 @@ using namespace std;
 
 */
 
+class CollectStaticVarsVisitor : public DispatchVisitor {
+   private:
+    std::vector<std::string> fStaticVarNames;
+
+   public:
+    using InstVisitor::visit;
+
+    CollectStaticVarsVisitor() : DispatchVisitor(), fStaticVarNames{} {}
+
+    virtual void visit(DeclareVarInst* inst)
+    {
+        if (inst->fAddress->isStaticStruct() && !(inst->getAccess() & Address::kConst)) {
+            fStaticVarNames.push_back(inst->getName());
+        }
+    }
+
+    std::vector<std::string> getStaticVarNames() { return fStaticVarNames; }
+};
+
+template <typename T>
+std::unordered_set<T> toUnorderedSet(const std::vector<T>& vec)
+{
+    return std::unordered_set<T>(vec.begin(), vec.end());
+}
+
 map<string, bool> RustInstVisitor::gFunctionSymbolTable;
 
 dsp_factory_base* RustCodeContainer::produceFactory()
@@ -232,6 +257,12 @@ void RustCodeContainer::produceFaustDspBlob()
 
 void RustCodeContainer::produceClass()
 {
+    // Initialize fStaticVarNames by collecting static vars from global declarations.
+    CollectStaticVarsVisitor collectStaticVarsVisitor{};
+    generateGlobalDeclarations(&collectStaticVarsVisitor);
+    fStaticVarNames = collectStaticVarsVisitor.getStaticVarNames();
+    fCodeProducer.setVarsRequiringGuards(toUnorderedSet(fStaticVarNames));
+
     int n = 0;
     *fOut << "#[cfg_attr(feature = \"default-boxed\", derive(default_boxed::DefaultBoxed))]";
     if (gGlobal->gReprC) {
@@ -273,7 +304,7 @@ void RustCodeContainer::produceClass()
         tab(n + 1, *fOut);
         *fOut << "#[cfg_attr(not(target_os = \"windows\"), link(name = \"m\"))]";
         tab(n + 1, *fOut);
-        *fOut << "extern \"C\" {";
+        *fOut << "unsafe extern \"C\" {";
         tab(n + 2, *fOut);
         *fOut << "pub fn remainderf(from: c_float, to: c_float) -> c_float;";
         tab(n + 2, *fOut);
@@ -310,7 +341,7 @@ void RustCodeContainer::produceClass()
         tab(n + 1, *fOut);
         *fOut << "#[cfg_attr(not(target_os=\"windows\"), link(name=\"m\"))]";
         tab(n + 1, *fOut);
-        *fOut << "extern \"C\" {";
+        *fOut << "unsafe extern \"C\" {";
         tab(n + 2, *fOut);
         *fOut << "pub fn remainder(from: c_double, to: c_double) -> c_double;";
         tab(n + 2, *fOut);
@@ -416,7 +447,9 @@ void RustCodeContainer::produceClass()
         tab(n + 2, *fOut);
         // Local visitor here to avoid DSP object type wrong generation
         RustInstVisitor codeproducer(fOut, "");
+        codeproducer.setVarsRequiringGuards(toUnorderedSet(fStaticVarNames));
         codeproducer.Tab(n + 2);
+        generateLockGuards(n + 2, false);
         generateStaticInit(&codeproducer);
     }
     back(1, *fOut);
@@ -513,6 +546,7 @@ void RustCodeContainer::produceClass()
         tab(n + 1, *fOut);
         *fOut << "pub fn control(&mut self) {";
         tab(n + 2, *fOut);
+        generateLockGuards(n + 1, true);
         generateControlDeclarations(&fCodeProducer);
         back(1, *fOut);
         *fOut << "}";
@@ -619,6 +653,22 @@ void RustCodeContainer::produceParameterGetterSetter(int tabs, map<string, int> 
     *fOut << "}";
 }
 
+void RustCodeContainer::generateLockGuards(int n, bool read)
+{
+    // Helper to create lock guards for static RwLocks, generating expressions like:
+    //     let <static-var-name>_guard = <static-var-name>.read().unwrap();
+    //     let mut <static-var-name>_guard = <static-var-name>.write().unwrap();
+    *fOut << "// Obtaining locks on " << fStaticVarNames.size() << " static var(s)";
+    tab(n, *fOut);
+    const auto method  = (read ? "read()" : "write()");
+    const auto binding = (read ? "let" : "let mut");
+    for (const auto& staticVarName : fStaticVarNames) {
+        *fOut << binding << " " << staticVarName << "_guard = " << staticVarName << "." << method
+              << ".unwrap();";
+        tab(n, *fOut);
+    }
+}
+
 void RustCodeContainer::generateComputeHeader(int n, std::ostream* fOut)
 {
     // Compute "compute" declaration
@@ -667,6 +717,8 @@ void RustCodeContainer::generateComputeFrame(int n)
 
     fCodeProducer.Tab(n + 1);
 
+    generateLockGuards(n + 1, true);
+
     tab(n + 1, *fOut);
     generateComputeBlock(&fCodeProducer);
 
@@ -704,6 +756,8 @@ void RustScalarCodeContainer::generateCompute(int n)
     tab(n + 1, *fOut);
     fCodeProducer.Tab(n + 1);
 
+    generateLockGuards(n + 1, true);
+
     generateComputeBlock(&fCodeProducer);
 
     // Generates one single scalar loop
@@ -732,6 +786,8 @@ void RustScalarCodeContainer::generateComputeIO(int n)
     generateComputeIOHeader(n, fOut);
     tab(n + 1, *fOut);
     fCodeProducer.Tab(n + 1);
+
+    generateLockGuards(n + 1, true);
 
     generateComputeBlock(&fCodeProducer);
 
@@ -776,6 +832,8 @@ void RustVectorCodeContainer::generateCompute(int n)
     generateComputeHeader(n, fOut);
     tab(n + 1, *fOut);
     fCodeProducer.Tab(n + 1);
+
+    generateLockGuards(n + 1, true);
 
     // Generates local variables declaration and setup
     generateComputeBlock(&fCodeProducer);
@@ -843,6 +901,8 @@ void RustOpenMPCodeContainer::generateCompute(int n)
     tab(n + 1, *fOut);
     fCodeProducer.Tab(n + 1);
 
+    generateLockGuards(n + 1, true);
+
     // Generates local variables declaration and setup
     generateComputeBlock(&fCodeProducer);
 
@@ -886,6 +946,8 @@ void RustWorkStealingCodeContainer::generateCompute(int n)
 
     tab(n + 1, *fOut);
     fCodeProducer.Tab(n + 1);
+
+    generateLockGuards(n + 1, true);
 
     // Generates local variables declaration and setup
     generateComputeBlock(&fCodeProducer);
