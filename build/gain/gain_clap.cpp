@@ -76,6 +76,61 @@ struct FaustCLAPPlugin : public clap::helpers::Plugin<clap::helpers::Misbehaviou
 #include <clap/helpers/host-proxy.hh> //required for clap::helpers base class
 #include <clap/events.h>
 
+//guarded MapUI subclass to prevent accidental param writes
+struct GuardedUI : public MapUI {
+    bool allowWrite = false;
+
+    //log and guard set by path
+    void setParamValue(const std::string& path, FAUSTFLOAT val) {
+        std::cerr << "🔍 [GuardedUI] setParamValue(path=" << path << ", val=" << val
+                  << ") | allowWrite=" << allowWrite << std::endl;
+
+        if (!allowWrite) {
+            std::cerr << "🚨 ILLEGAL param write detected! path=" << path << " val=" << val << std::endl;
+            std::abort(); //immediate crash
+        }
+
+        MapUI::setParamValue(path, val);
+    }
+
+    //log and guard set by index (could be used by other FAUST layers)
+    void setParamValue(int index, FAUSTFLOAT val) {
+        std::string addr = getParamAddress(index);
+        std::cerr << "🔍 [GuardedUI] setParamValue(index=" << index << ", addr=" << addr
+                  << ", val=" << val << ") | allowWrite=" << allowWrite << std::endl;
+
+        if (!allowWrite) {
+            std::cerr << "🚫 [GuardedUI] Blocked param write by index!" << std::endl;
+            return;
+        }
+        MapUI::setParamValue(addr, val);
+    }
+    void guardedSetByIndex(int index, FAUSTFLOAT val) {
+        std::string addr = getParamAddress(index);
+        std::cerr << "🔍 [GuardedUI] guardedSetByIndex(index=" << index << ", addr=" << addr
+                  << ", val=" << val << ") | allowWrite=" << allowWrite << std::endl;
+
+        if (!allowWrite) {
+            std::cerr << "🚫 [GuardedUI] Blocked param write via guardedSetByIndex!" << std::endl;
+            return;
+        }
+        MapUI::setParamValue(addr, val);
+    }
+};
+
+//scoped guard to enable/disable writes safely
+struct GuardedScope {
+    GuardedUI& ui;
+    GuardedScope(GuardedUI& ui) : ui(ui) {
+        ui.allowWrite = true;
+    }
+    ~GuardedScope() {
+         ui.allowWrite = false;
+    }
+};
+
+
+
 //user defined dsp will be inserted here!
 
 #ifndef FAUSTFLOAT
@@ -201,8 +256,10 @@ class GainPlugin final : public Base {
 public:
     //faust dsp and UI objects
     mydsp fDSP;
-    MapUI fUI;
+    GuardedUI fUI;
     std::vector<std::string> fParamAddresses;
+    std::vector<float> fExpectedValues;
+    bool fHasFlushed= false; //new flag to track if flush() was called
 
     GainPlugin(const clap_plugin_descriptor_t* desc, const clap_host_t* host)
     : Base(desc, host) {
@@ -220,6 +277,9 @@ public:
         for (int i = 0; i < fUI.getParamsCount(); ++i) {
             auto shortname = fUI.getParamShortname(i);
             fParamAddresses.push_back(shortname);
+            float actual = fUI.getParamValue(shortname);
+            fExpectedValues.push_back(actual); //capture whatever the DSP sets
+            std::cout <<"[init] param" << i << "=" <<actual <<std::endl;
 
             //std::cout << "[faust2clap] Param " << i << ": " << shortname << std::endl;
         }
@@ -248,11 +308,28 @@ public:
         if (!process || process->audio_inputs_count < 1 || process->audio_outputs_count < 1)
             return CLAP_PROCESS_ERROR;
 
+        if (fHasFlushed) {
+            for (size_t i = 0; i < fExpectedValues.size(); ++i) {
+                float actual = fUI.getParamValue(fParamAddresses[i]);
+                float expected = fExpectedValues[i];
+                if (actual != expected) {
+                    fExpectedValues[i] = actual;
+                }
+            }
+        }
+
         auto in = (FAUSTFLOAT**)process->audio_inputs->data32;
         auto out = (FAUSTFLOAT**)process->audio_outputs->data32;
-        fDSP.compute(process->frames_count, in, out);
+
+        {
+            GuardedScope guard(fUI);
+            fDSP.compute(process->frames_count, in, out);
+        }
+
         return CLAP_PROCESS_CONTINUE;
     }
+
+
 
     //expose parameter count
     bool implementsParams() const noexcept override { return true; }
@@ -315,34 +392,47 @@ public:
 
     void paramsFlush(const clap_input_events_t* in, const clap_output_events_t*) noexcept override {
         if (!in) return;
+        fHasFlushed = true;
 
         for (uint32_t i = 0; i < in->size(in); ++i) {
             const clap_event_header_t* hdr = in->get(in, i);
             if (!hdr) continue;
 
+            std::cout << "[flush] got event: type=" << hdr->type
+                      << " space_id=0x" << std::hex << hdr->space_id << std::dec << std::endl;
+
+
+
             if (hdr->type != CLAP_EVENT_PARAM_VALUE)
                 continue;
 
-            const auto* ev = reinterpret_cast<const clap_event_param_value_t*>(hdr);
-
-            std::cout << "[faust2clap] got PARAM_VALUE event: space_id=0x"
-                      << std::hex << hdr->space_id << " param_id=" << std::dec << ev->param_id
-                      << " value=" << ev->value << std::endl;
 
             if (hdr->space_id != CLAP_CORE_EVENT_SPACE_ID) {
-                std::cout << "[faust2clap] ➤skipping: non-core namespace" << std::endl;
+                std::cerr << "❌ Rejected param event with wrong namespace: 0x"
+                          << std::hex << hdr->space_id << std::dec << std::endl;
                 continue;
             }
 
+            const auto* ev = reinterpret_cast<const clap_event_param_value_t*>(hdr);
+
+
             if (ev->param_id >= fParamAddresses.size()) {
-                std::cout << "[faust2clap] ➤ skipping: param_id out of range" << std::endl;
+                std::cout << "[faust2clap] skipping event with out-of-range param_id " << ev->param_id << std::endl;
                 continue;
             }
 
             std::cout << "[faust2clap] ➤ applying value to param " << ev->param_id << std::endl;
-            fUI.setParamValue(fParamAddresses[ev->param_id], ev->value);
+
+            {
+                GuardedScope guard(fUI);
+                fUI.setParamValue(fParamAddresses[ev->param_id], ev->value);
+            }
+
+
+            fExpectedValues[ev->param_id] = ev->value;
         }
     }
+
 
 
     using Base::clapPlugin;
