@@ -81,22 +81,22 @@ struct GuardedUI : public MapUI {
 
     void setParamValue(const std::string& path, FAUSTFLOAT val) {
         if (!allowWrite) {
-            std::cerr << "🚨 GuardedUI blocked write to path=" << path << " with val=" << val << std::endl;
-            std::abort(); // Catch unintended writes early
+            //std::cerr << "🚨 GuardedUI blocked write to path=" << path << " with val=" << val << std::endl;
+            std::abort(); //catch unintended writes early
         }
 
-        std::cerr << "✅ GuardedUI write: " << path << " = " << val << std::endl;
+        //std::cerr << "✅ GuardedUI write: " << path << " = " << val << std::endl;
         MapUI::setParamValue(path, val);
     }
 
 
     void setParamValue(int index, FAUSTFLOAT val) {
         std::string addr = getParamAddress(index);
-        std::cerr << "🔍 [GuardedUI] setParamValue(index=" << index << ", addr=" << addr
-                  << ", val=" << val << ") | allowWrite=" << allowWrite << std::endl;
+        //std::cerr << "🔍 [GuardedUI] setParamValue(index=" << index << ", addr=" << addr
+                  //<< ", val=" << val << ") | allowWrite=" << allowWrite << std::endl;
 
         if (!allowWrite) {
-            std::cerr << "🚫 [GuardedUI] Blocked param write by index!" << std::endl;
+            //std::cerr << "🚫 [GuardedUI] Blocked param write by index!" << std::endl;
             return;
         }
         MapUI::setParamValue(addr, val);
@@ -104,11 +104,11 @@ struct GuardedUI : public MapUI {
 
     void guardedSetByIndex(int index, FAUSTFLOAT val) {
         std::string addr = getParamAddress(index);
-        std::cerr << "🔍 [GuardedUI] guardedSetByIndex(index=" << index << ", addr=" << addr
-                  << ", val=" << val << ") | allowWrite=" << allowWrite << std::endl;
+        //std::cerr << "🔍 [GuardedUI] guardedSetByIndex(index=" << index << ", addr=" << addr
+                  //<< ", val=" << val << ") | allowWrite=" << allowWrite << std::endl;
 
         if (!allowWrite) {
-            std::cerr << "🚫 [GuardedUI] Blocked param write via guardedSetByIndex!" << std::endl;
+            //std::cerr << "🚫 [GuardedUI] Blocked param write via guardedSetByIndex!" << std::endl;
             return;
         }
         MapUI::setParamValue(addr, val);
@@ -120,13 +120,13 @@ struct GuardedScope {
     const char* tag;
 
     GuardedScope(GuardedUI& ui, const char* src = "unknown") : ui(ui), tag(src) {
-        std::cerr << "🟢 Enter GuardedScope from: " << tag << std::endl;
+        //std::cerr << "🟢 Enter GuardedScope from: " << tag << std::endl;
         ui.allowWrite = true;
     }
 
     ~GuardedScope() {
         ui.allowWrite = false;
-        std::cerr << "🔴 Exit GuardedScope from: " << tag << std::endl;
+        //std::cerr << "🔴 Exit GuardedScope from: " << tag << std::endl;
     }
 };
 
@@ -290,12 +290,12 @@ public:
     }
 
     bool applyParamEventIfValid(const clap_event_header_t* hdr) {
-        if (!hdr) return false;
+        //if (!hdr) return false;
 
-        std::cerr << "🔎 Event received: type=" << hdr->type << " space_id=0x" << std::hex << hdr->space_id << std::dec << std::endl;
+        //std::cerr << "🔎 Event received: type=" << hdr->type << " space_id=0x" << std::hex << hdr->space_id << std::dec << std::endl;
 
         if (hdr->space_id != CLAP_CORE_EVENT_SPACE_ID) {
-            std::cerr << "❌ Rejected param event with wrong namespace: 0x" << std::hex << hdr->space_id << std::dec << std::endl;
+            //std::cerr << "❌ Rejected param event with wrong namespace: 0x" << std::hex << hdr->space_id << std::dec << std::endl;
             return false;
         }
 
@@ -323,7 +323,7 @@ public:
             for (uint32_t i = 0; i < N; ++i) {
                 const clap_event_header_t* hdr = events->get(events, i);
                 if (!applyParamEventIfValid(hdr)) {
-                    std::cerr << "⚠️ Skipped event with invalid namespace or type\n";
+                    //std::cerr << "⚠️ Skipped event with invalid namespace or type\n";
                 }
 
             }
@@ -389,7 +389,7 @@ public:
             const clap_event_header_t* hdr = in->get(in, i);
 
             if (!applyParamEventIfValid(hdr)) {
-                std::cerr << "⚠️ paramsFlush skipped event: type=" << hdr->type << ", space_id=0x" << std::hex << hdr->space_id << std::dec << std::endl;
+                //std::cerr << "⚠️ paramsFlush skipped event: type=" << hdr->type << ", space_id=0x" << std::hex << hdr->space_id << std::dec << std::endl;
             }
         }
     }
