@@ -14,7 +14,7 @@ set(CMAKE_MAKEFILE_DEPENDS
   "CMakeFiles/3.30.5/CMakeCCompiler.cmake"
   "CMakeFiles/3.30.5/CMakeCXXCompiler.cmake"
   "CMakeFiles/3.30.5/CMakeSystem.cmake"
-  "sawtoothLab.plist"
+  "gain.plist"
   "/Users/cucu/Documents/GitHub/faust/tools/faust2clap/cmake/generic.plist.in"
   "/opt/homebrew/Cellar/cmake/3.30.5/share/cmake/Modules/BasicConfigVersion-AnyNewerVersion.cmake.in"
   "/opt/homebrew/Cellar/cmake/3.30.5/share/cmake/Modules/CMakeCInformation.cmake"
@@ -51,10 +51,10 @@ set(CMAKE_MAKEFILE_OUTPUTS
 
 # Byproducts of CMake generate step:
 set(CMAKE_MAKEFILE_PRODUCTS
-  "sawtoothLab.plist"
-  "sawtoothLab.clap/Contents/MacOS"
-  "sawtoothLab.clap/Contents/Info.plist"
-  "sawtoothLab.clap/Contents/Info.plist"
+  "gain.plist"
+  "gain.clap/Contents/MacOS"
+  "gain.clap/Contents/Info.plist"
+  "gain.clap/Contents/Info.plist"
   "CMakeFiles/CMakeDirectoryInformation.cmake"
   "clap-sdk/clap-config-version.cmake"
   "clap-sdk/clap.pc"
@@ -65,6 +65,6 @@ set(CMAKE_MAKEFILE_PRODUCTS
 # Dependency information for all targets:
 set(CMAKE_DEPEND_INFO_FILES
   "CMakeFiles/faust_gui_glue.dir/DependInfo.cmake"
-  "CMakeFiles/sawtoothLab.dir/DependInfo.cmake"
+  "CMakeFiles/gain.dir/DependInfo.cmake"
   "clap-sdk/CMakeFiles/clap-tests.dir/DependInfo.cmake"
   )

@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.15)
 #declaration of project and languages in use
 project(faust2clap LANGUAGES C CXX)
 
+include_directories(SYSTEM "${CMAKE_OSX_SYSROOT}/usr/include/c++/v1")
 #specify c++17 and macos deployment target
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_OSX_DEPLOYMENT_TARGET "10.11" CACHE STRING "macOS target")

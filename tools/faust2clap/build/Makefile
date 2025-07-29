@@ -175,17 +175,17 @@ faust_gui_glue/fast:
 .PHONY : faust_gui_glue/fast
 
 #=============================================================================
-# Target rules for targets named sawtoothLab
+# Target rules for targets named gain
 
 # Build rule for target.
-sawtoothLab: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 sawtoothLab
-.PHONY : sawtoothLab
+gain: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 gain
+.PHONY : gain
 
 # fast build rule for target.
-sawtoothLab/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/sawtoothLab.dir/build.make CMakeFiles/sawtoothLab.dir/build
-.PHONY : sawtoothLab/fast
+gain/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/gain.dir/build.make CMakeFiles/gain.dir/build
+.PHONY : gain/fast
 
 #=============================================================================
 # Target rules for targets named clap-tests
@@ -200,29 +200,29 @@ clap-tests/fast:
 	$(MAKE) $(MAKESILENT) -f clap-sdk/CMakeFiles/clap-tests.dir/build.make clap-sdk/CMakeFiles/clap-tests.dir/build
 .PHONY : clap-tests/fast
 
-Users/cucu/Documents/GitHub/faust/build/sawtoothLab/sawtoothLab_clap.o: Users/cucu/Documents/GitHub/faust/build/sawtoothLab/sawtoothLab_clap.cpp.o
-.PHONY : Users/cucu/Documents/GitHub/faust/build/sawtoothLab/sawtoothLab_clap.o
+Users/cucu/Documents/GitHub/faust/build/gain/gain_clap.o: Users/cucu/Documents/GitHub/faust/build/gain/gain_clap.cpp.o
+.PHONY : Users/cucu/Documents/GitHub/faust/build/gain/gain_clap.o
 
 # target to build an object file
-Users/cucu/Documents/GitHub/faust/build/sawtoothLab/sawtoothLab_clap.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/sawtoothLab.dir/build.make CMakeFiles/sawtoothLab.dir/Users/cucu/Documents/GitHub/faust/build/sawtoothLab/sawtoothLab_clap.cpp.o
-.PHONY : Users/cucu/Documents/GitHub/faust/build/sawtoothLab/sawtoothLab_clap.cpp.o
+Users/cucu/Documents/GitHub/faust/build/gain/gain_clap.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/gain.dir/build.make CMakeFiles/gain.dir/Users/cucu/Documents/GitHub/faust/build/gain/gain_clap.cpp.o
+.PHONY : Users/cucu/Documents/GitHub/faust/build/gain/gain_clap.cpp.o
 
-Users/cucu/Documents/GitHub/faust/build/sawtoothLab/sawtoothLab_clap.i: Users/cucu/Documents/GitHub/faust/build/sawtoothLab/sawtoothLab_clap.cpp.i
-.PHONY : Users/cucu/Documents/GitHub/faust/build/sawtoothLab/sawtoothLab_clap.i
+Users/cucu/Documents/GitHub/faust/build/gain/gain_clap.i: Users/cucu/Documents/GitHub/faust/build/gain/gain_clap.cpp.i
+.PHONY : Users/cucu/Documents/GitHub/faust/build/gain/gain_clap.i
 
 # target to preprocess a source file
-Users/cucu/Documents/GitHub/faust/build/sawtoothLab/sawtoothLab_clap.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/sawtoothLab.dir/build.make CMakeFiles/sawtoothLab.dir/Users/cucu/Documents/GitHub/faust/build/sawtoothLab/sawtoothLab_clap.cpp.i
-.PHONY : Users/cucu/Documents/GitHub/faust/build/sawtoothLab/sawtoothLab_clap.cpp.i
+Users/cucu/Documents/GitHub/faust/build/gain/gain_clap.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/gain.dir/build.make CMakeFiles/gain.dir/Users/cucu/Documents/GitHub/faust/build/gain/gain_clap.cpp.i
+.PHONY : Users/cucu/Documents/GitHub/faust/build/gain/gain_clap.cpp.i
 
-Users/cucu/Documents/GitHub/faust/build/sawtoothLab/sawtoothLab_clap.s: Users/cucu/Documents/GitHub/faust/build/sawtoothLab/sawtoothLab_clap.cpp.s
-.PHONY : Users/cucu/Documents/GitHub/faust/build/sawtoothLab/sawtoothLab_clap.s
+Users/cucu/Documents/GitHub/faust/build/gain/gain_clap.s: Users/cucu/Documents/GitHub/faust/build/gain/gain_clap.cpp.s
+.PHONY : Users/cucu/Documents/GitHub/faust/build/gain/gain_clap.s
 
 # target to generate assembly for a file
-Users/cucu/Documents/GitHub/faust/build/sawtoothLab/sawtoothLab_clap.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/sawtoothLab.dir/build.make CMakeFiles/sawtoothLab.dir/Users/cucu/Documents/GitHub/faust/build/sawtoothLab/sawtoothLab_clap.cpp.s
-.PHONY : Users/cucu/Documents/GitHub/faust/build/sawtoothLab/sawtoothLab_clap.cpp.s
+Users/cucu/Documents/GitHub/faust/build/gain/gain_clap.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/gain.dir/build.make CMakeFiles/gain.dir/Users/cucu/Documents/GitHub/faust/build/gain/gain_clap.cpp.s
+.PHONY : Users/cucu/Documents/GitHub/faust/build/gain/gain_clap.cpp.s
 
 lib/faust_gui_glue.o: lib/faust_gui_glue.cpp.o
 .PHONY : lib/faust_gui_glue.o
@@ -253,7 +253,7 @@ lib/plugin.o: lib/plugin.cc.o
 
 # target to build an object file
 lib/plugin.cc.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/sawtoothLab.dir/build.make CMakeFiles/sawtoothLab.dir/lib/plugin.cc.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/gain.dir/build.make CMakeFiles/gain.dir/lib/plugin.cc.o
 .PHONY : lib/plugin.cc.o
 
 lib/plugin.i: lib/plugin.cc.i
@@ -261,7 +261,7 @@ lib/plugin.i: lib/plugin.cc.i
 
 # target to preprocess a source file
 lib/plugin.cc.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/sawtoothLab.dir/build.make CMakeFiles/sawtoothLab.dir/lib/plugin.cc.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/gain.dir/build.make CMakeFiles/gain.dir/lib/plugin.cc.i
 .PHONY : lib/plugin.cc.i
 
 lib/plugin.s: lib/plugin.cc.s
@@ -269,7 +269,7 @@ lib/plugin.s: lib/plugin.cc.s
 
 # target to generate assembly for a file
 lib/plugin.cc.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/sawtoothLab.dir/build.make CMakeFiles/sawtoothLab.dir/lib/plugin.cc.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/gain.dir/build.make CMakeFiles/gain.dir/lib/plugin.cc.s
 .PHONY : lib/plugin.cc.s
 
 # Help Target
@@ -286,10 +286,10 @@ help:
 	@echo "... rebuild_cache"
 	@echo "... clap-tests"
 	@echo "... faust_gui_glue"
-	@echo "... sawtoothLab"
-	@echo "... Users/cucu/Documents/GitHub/faust/build/sawtoothLab/sawtoothLab_clap.o"
-	@echo "... Users/cucu/Documents/GitHub/faust/build/sawtoothLab/sawtoothLab_clap.i"
-	@echo "... Users/cucu/Documents/GitHub/faust/build/sawtoothLab/sawtoothLab_clap.s"
+	@echo "... gain"
+	@echo "... Users/cucu/Documents/GitHub/faust/build/gain/gain_clap.o"
+	@echo "... Users/cucu/Documents/GitHub/faust/build/gain/gain_clap.i"
+	@echo "... Users/cucu/Documents/GitHub/faust/build/gain/gain_clap.s"
 	@echo "... lib/faust_gui_glue.o"
 	@echo "... lib/faust_gui_glue.i"
 	@echo "... lib/faust_gui_glue.s"

@@ -1,0 +1,35 @@
+{
+	"name": "gain",
+	"filename": "gain.dsp",
+	"version": "2.81.0",
+	"compile_options": "-lang cpp -ct 1 -es 1 -mcd 16 -mdd 1024 -mdy 33 -single -ftz 0",
+	"library_list": ["/usr/local/share/faust/stdfaust.lib"],
+	"include_pathnames": ["/usr/local/share/faust","/usr/local/share/faust","/usr/share/faust","examples","/Users/cucu/Documents/GitHub/faust/examples"],
+	"size": 8,
+	"inputs": 1,
+	"outputs": 1,
+	"meta": [ 
+		{ "compile_options": "-lang cpp -ct 1 -es 1 -mcd 16 -mdd 1024 -mdy 33 -single -ftz 0" },
+		{ "filename": "gain.dsp" },
+		{ "name": "gain" }
+	],
+	"ui": [ 
+		{
+			"type": "vgroup",
+			"label": "gain",
+			"items": [ 
+				{
+					"type": "vslider",
+					"label": "gain",
+					"varname": "fVslider0",
+					"shortname": "gain",
+					"address": "/gain/gain",
+					"init": 1,
+					"min": 0,
+					"max": 10,
+					"step": 0.1
+				}
+			]
+		}
+	]
+}
