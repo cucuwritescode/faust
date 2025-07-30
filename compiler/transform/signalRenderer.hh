@@ -549,20 +549,7 @@ struct SignalRenderer : public SignalVisitor {
     FAUSTFLOAT**                     fInputs     = nullptr;  // Set at each call of 'compute'
     Tree                             fOutputSig;
 
-    std::stack<Node>                 fValueStack;   // Interpreter stack of values
-    std::map<Tree, DelayedSig<int>>  fIntDelays;    // Delay lines for integer signals
-    std::map<Tree, DelayedSig<REAL>> fRealDelays;   // Delay lines for REAL signals
-    std::map<Tree, TableData<int>>   fIntTables;    // Table for integer signals
-    std::map<Tree, TableData<REAL>>  fRealTables;   // Table for REAL signals
-    std::map<Tree, inputControl>  fInputControls;   // Inputs controls (sliders, nentries, buttons)
-    std::map<Tree, outputControl> fOutputControls;  // Output controls (bargraphs)
-    int                           fNumInputs  = 0;
-    int                           fNumOutputs = 0;
-    int                           fSampleRate = -1;
-    int                           fSample     = 0;  // Current sample in a buffer
-    int                           fIOTA       = 0;  // Used as index counter for all delay lines
-    FAUSTFLOAT**                  fInputs     = nullptr;  // Set at each call of 'compute'
-    Tree                          fOutputSig;             // The output tree to be rendered
+    
 
     void clear()
     {
