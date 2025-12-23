@@ -70,9 +70,11 @@ The plugin will be automatically built and installed to:
 ```
 
 ###  Dynamic (Interpreter) mode
-Build the dynamic hot-reload plugin
+Build the dynamic hot-reload plugin, note that the esfw library needs to be available if not already present on your system.
+
 ```bash
 cd architecture/clap
+git clone https://github.com/SpartanJ/efsw.git
 make -f Makefile.simple
 ```
 Install to system plugin directories
